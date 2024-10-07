@@ -30,3 +30,7 @@ def tell_age(request, response, age):
 def sum(request, response, num_1, num_2):
     total = int(num_1) + int(num_2)
     response.text = f"{num_1} + {num_2} = {total}"
+
+@app.route("/template")
+def template_handler(req, resp):
+    resp.body = app.template("index.html", context={"title": "Lazy Framework", "name": "Lazy"}).encode()
