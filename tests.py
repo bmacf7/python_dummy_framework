@@ -1,5 +1,60 @@
 import pytest
 from api import API
+from middleware import Middleware
+
+FILE_DIR = "css"
+FILE_NAME = "main.css"
+FILE_CONTENTS = "body {background-color: red}"
+
+# Helpers
+
+def test_middleware_methods_are_called(api, client):
+    process_request_called = False
+    process_response_called = False
+
+    class CallMiddlewareMethods(Middleware):
+        def __init__(self, app):
+            super().__init__(app)
+        
+        def process_request(self, req):
+            nonlocal process_request_called
+            process_request_called = True
+        
+        def process_response(self, req, resp):
+            nonlocal process_response_called
+            process_response_called = True
+    
+    api.add_middleware(CallMiddlewareMethods)
+
+    @api.route("/")
+    def index(req, res):
+        res.text = "YOLO"
+
+    client.get("http://testserver/")
+
+    assert process_request_called is True
+    assert process_response_called is True
+
+def _create_static(static_dir):
+    asset = static_dir.mkdir(FILE_DIR).join(FILE_NAME)
+    asset.write(FILE_CONTENTS)
+
+    return asset
+
+def test_404_is_returned_for_nonexistent_static_file(client):
+    assert client.get(f"http://testserver/main.css").status_code == 404
+
+
+def test_assets_are_served(tmpdir_factory):
+    static_dir = tmpdir_factory.mktemp("static")
+    _create_static(static_dir)
+    api = API(static_dir=str(static_dir))
+    client = api.test_session()
+
+    response = client.get(f"http://testserver/static/{FILE_DIR}/{FILE_NAME}")
+
+    assert response.status_code == 200
+    assert response.text == FILE_CONTENTS
 
 def test_basic_route_adding(api):
     @api.route("/home")
@@ -96,6 +151,8 @@ def test_template(api, client):
 def test_custon_exception_handler(api, client):
     def on_exception(req, resp, exc):
         resp.text = "AttributeErrorHappened"
+
+    api.add_exception_handler(on_exception) # Pass the exception to the handler.
     
     @api.route("/")
     def index(req, resp):
