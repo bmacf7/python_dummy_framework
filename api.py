@@ -2,12 +2,13 @@ import os
 import inspect
 
 from parse import parse
-from webob import Request, Response
+from webob import Request
 from requests import Session as RequestsSession
 from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
 from jinja2 import Environment, FileSystemLoader
 from whitenoise import WhiteNoise
 
+from response import Response
 from middleware import Middleware
 
 class API:
@@ -40,9 +41,9 @@ class API:
 
         return response(environ, start_response)
 
-    def route(self, path):
+    def route(self, path, allowed_methods=None):
         def wrapper(handler):
-            self.add_route(path, handler)
+            self.add_route(path, handler, allowed_methods)  # Now we allow methods for function-based routes.
             return handler
         
         return wrapper
@@ -53,28 +54,36 @@ class API:
     def add_exception_handler(self, exception_handler):
         self.exception_handler = exception_handler
 
-    def add_route(self, path, handler):
-        assert path not in self.routes, f"Path '{path}' already exists."
+    def add_route(self, path, handler, allowed_methods=None):
+        assert path not in self.routes, f"Path '{path}' already exists."    # Check if the route already exists.
 
-        self.routes[path] = handler
+        if allowed_methods is None: # if the user not specify which methods are allowed, we allow all of them.
+            allowed_methods = ["get", "post", "put", "patch", "delete", "options"]
+
+        self.routes[path] = {"handler": handler, "allowed_methods": allowed_methods}    # Create a dict for the handler and the routes it allows.
 
     def find_handler(self, request_path):
-        for path, handler in self.routes.items():
+        for path, handler_data in self.routes.items():  # Now the handler is a dictionary too.
             parse_result = parse(path, request_path)
             if parse_result is not None:
-                return handler, parse_result.named
+                return handler_data, parse_result.named
         
         return None, None
 
     def handle_request(self, request):
         response = Response()
-        handler, kwargs = self.find_handler(request_path=request.path)  # Handling parametrized routes.
+        handler_data, kwargs = self.find_handler(request_path=request.path)  # Handling parametrized routes.
 
         try:
-            if handler is not None:
+            if handler_data is not None:
+                handler = handler_data["handler"]
+                allowed_methods = handler_data["allowed_methods"]
                 if inspect.isclass(handler):    # Check either is a function or class routing.
                     handler = getattr(handler(), request.method.lower(), None)  # Retrieve the method of the class.
                     if handler is None:
+                        raise AttributeError("Method not allowed", request.method)
+                else:
+                    if request.method.lower() not in allowed_methods:
                         raise AttributeError("Method not allowed", request.method)
                     
                 handler(request, response, **kwargs)
