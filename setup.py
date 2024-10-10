@@ -11,7 +11,7 @@ NAME = "dummy-framework"
 DESCRIPTION = "Dummy Python Web Framework built for learning purposes."
 EMAIL = "bmachin7@gmail.com"
 AUTHOR = "Byron Machin"
-REQUIRES_PYTHON = ">=3.11.0"
+REQUIRES_PYTHON = ">=3.6.0"
 VERSION = "0.0.1"
 
 # Which packages are required for this module to be executed?
@@ -62,7 +62,7 @@ setup(
     include_package_data=True,
     license="MIT",
     classifiers=[
-        "Programming Languaje :: Python :: 3.11",
+        "Programming Language :: Python :: 3.6",
     ],
     setup_requires=["wheel"],
 )
