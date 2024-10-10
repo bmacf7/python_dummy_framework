@@ -1,5 +1,5 @@
-from api import API
-from middleware import Middleware
+from dummy.api import API
+from dummy.middleware import Middleware
 
 app = API()
 # app.add_middleware(SomeMiddleware)
