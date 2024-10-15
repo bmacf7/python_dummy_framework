@@ -6,3 +6,4 @@ dummy_framework.egg-info
 env
 .pytest_cache
 __pycache__
+*.db
